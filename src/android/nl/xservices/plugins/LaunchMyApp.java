@@ -17,6 +17,9 @@ public class LaunchMyApp extends CordovaPlugin {
 
   private static final String ACTION_CHECKINTENT = "checkIntent";
 
+  private static boolean _resendIntentString = false;
+  private String _cachedIntentString;
+
   @Override
   public boolean execute(String action, JSONArray args, CallbackContext callbackContext) throws JSONException {
     if (ACTION_CHECKINTENT.equalsIgnoreCase(action)) {
@@ -24,15 +27,21 @@ public class LaunchMyApp extends CordovaPlugin {
       if (intent.getDataString() != null) {
         callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.OK, intent.getDataString()));
         intent.setData(null);
-        return true;
+      } else if (_resendIntentString) {
+        if (_cachedIntentString!=null) {
+          callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.OK, _cachedIntentString));
+          _cachedIntentString=null;
+        } else {
+          callbackContext.error("No cached intent string exists to resend. Ignoring this errorcallback is the best approach.");
+        }
+        _resendIntentString=false;
       } else {
         callbackContext.error("App was not started via the launchmyapp URL scheme. Ignoring this errorcallback is the best approach.");
-        return false;
       }
     } else {
       callbackContext.error("This plugin only responds to the " + ACTION_CHECKINTENT + " action.");
-      return false;
     }
+    return true;
   }
 
   @Override
@@ -41,11 +50,20 @@ public class LaunchMyApp extends CordovaPlugin {
     if (intentString != null && intentString.contains("://")) {
       intent.setData(null);
       try {
+        _cachedIntentString = intentString;
         StringWriter writer = new StringWriter(intentString.length() * 2);
         escapeJavaStyleString(writer, intentString, true, false);
         webView.loadUrl("javascript:handleOpenURL('" + writer.toString() + "');");
       } catch (IOException ignore) {
       }
+    }
+  }
+
+  @Override
+  public void onReset() {
+    super.onReset();
+    if (_cachedIntentString!=null) {
+      _resendIntentString=true;
     }
   }
 
