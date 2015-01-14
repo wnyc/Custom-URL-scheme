@@ -1,6 +1,7 @@
 package nl.xservices.plugins;
 
 import android.content.Intent;
+
 import org.apache.cordova.CallbackContext;
 import org.apache.cordova.CordovaActivity;
 import org.apache.cordova.CordovaPlugin;
@@ -17,24 +18,19 @@ public class LaunchMyApp extends CordovaPlugin {
 
   private static final String ACTION_CHECKINTENT = "checkIntent";
 
-  private static boolean _resendIntentString = false;
   private String _cachedIntentString;
 
   @Override
   public boolean execute(String action, JSONArray args, CallbackContext callbackContext) throws JSONException {
     if (ACTION_CHECKINTENT.equalsIgnoreCase(action)) {
       final Intent intent = ((CordovaActivity) this.webView.getContext()).getIntent();
+      
       if (intent.getDataString() != null) {
         callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.OK, intent.getDataString()));
         intent.setData(null);
-      } else if (_resendIntentString) {
-        if (_cachedIntentString!=null) {
-          callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.OK, _cachedIntentString));
-          _cachedIntentString=null;
-        } else {
-          callbackContext.error("No cached intent string exists to resend. Ignoring this errorcallback is the best approach.");
-        }
-        _resendIntentString=false;
+      } else if (_cachedIntentString!=null) {
+        callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.OK, _cachedIntentString));
+        _cachedIntentString=null;  
       } else {
         callbackContext.error("App was not started via the launchmyapp URL scheme. Ignoring this errorcallback is the best approach.");
       }
@@ -47,6 +43,7 @@ public class LaunchMyApp extends CordovaPlugin {
   @Override
   public void onNewIntent(Intent intent) {
     final String intentString = intent.getDataString();
+
     if (intentString != null && intentString.contains("://")) {
       intent.setData(null);
       try {
@@ -56,14 +53,6 @@ public class LaunchMyApp extends CordovaPlugin {
         webView.loadUrl("javascript:handleOpenURL('" + writer.toString() + "');");
       } catch (IOException ignore) {
       }
-    }
-  }
-
-  @Override
-  public void onReset() {
-    super.onReset();
-    if (_cachedIntentString!=null) {
-      _resendIntentString=true;
     }
   }
 
